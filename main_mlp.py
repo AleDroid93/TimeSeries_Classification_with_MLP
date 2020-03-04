@@ -1,11 +1,11 @@
 import numpy as np
-from constants import N_FOLDS
+import constants
 from model import MyMultilayerPerceptron
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score, cohen_kappa_score
 from train import train
 
 
-for i in range(N_FOLDS):
+for i in range(constants.N_FOLDS):
     current_fold = str(i + 1)
     train_fn = '[YOUR TRAIN DATA FILE PATH HERE]'
     validation_fn = '[YOUR VALIDATION DATA FILE PATH HERE]'
@@ -18,6 +18,7 @@ for i in range(N_FOLDS):
     x_train = np.load(train_fn)
     x_validation = np.load(validation_fn)
     x_test = np.load(test_fn)
+
     y_train = np.load(target_train_fn)
     y_validation = np.load(target_validation_fn)
     y_test = np.load(target_test_fn)
@@ -25,8 +26,10 @@ for i in range(N_FOLDS):
     model = MyMultilayerPerceptron(n_classes, units=512, dropout_rate=0.5)
     print("Fold %s metrics:\n" % current_fold)
     # TRAINING
-    train(model, x_train, y_train, x_validation, y_validation)
+    train(model, x_train, y_train, x_validation, y_validation, n_epochs=constants.EPOCHS)
 
     # TESTING
     pred = model.predict(x_test)
-    print(accuracy_score(np.argmax(y_test, axis=1), np.argmax(pred, axis=1)))
+    print("Accuracy score on test set:", accuracy_score(np.argmax(y_test, axis=1), np.argmax(pred, axis=1)))
+    print("F-score on test set: ", f1_score(y_test, pred, average='macro'))
+    print("K-score on test set: ", cohen_kappa_score(y_test, pred))
