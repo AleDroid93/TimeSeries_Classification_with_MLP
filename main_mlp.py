@@ -1,11 +1,13 @@
 import numpy as np
-import constants
+import os
+from constants import N_TIMESTAMPS, N_FOLDS, N_CLASSES, EPOCHS, BATCH_SIZE
+import tensorflow as tf
 from model import MyMultilayerPerceptron
 from sklearn.metrics import accuracy_score, f1_score, cohen_kappa_score
 from train import train
 
 
-for i in range(constants.N_FOLDS):
+for i in range(N_FOLDS):
     current_fold = str(i + 1)
     train_fn = '[YOUR TRAIN DATA FILE PATH HERE]'
     validation_fn = '[YOUR VALIDATION DATA FILE PATH HERE]'
@@ -22,14 +24,25 @@ for i in range(constants.N_FOLDS):
     y_train = np.load(target_train_fn)
     y_validation = np.load(target_validation_fn)
     y_test = np.load(target_test_fn)
-    n_classes = 12
-    model = MyMultilayerPerceptron(n_classes, units=512, dropout_rate=0.5)
+    model = MyMultilayerPerceptron(N_CLASSES, units=512, dropout_rate=0.5)
     print("Fold %s metrics:\n" % current_fold)
     # TRAINING
-    train(model, x_train, y_train, x_validation, y_validation, n_epochs=constants.EPOCHS)
+
+    outputFolder = './MLP_output'
+    if not os.path.exists(outputFolder):
+        os.makedirs(outputFolder)
+    #filepath = outputFolder + "/model-{epoch:02d}-{val_accuracy:.2f}.hdf5"
+
+    """ defining loss function and the optimizer to use in the training phase """
+    loss_object = tf.keras.losses.CategoricalCrossentropy()
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0005)
+
+    ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, model=model)
+    manager = tf.train.CheckpointManager(ckpt, outputFolder + '/MLP_ckpts_fold '+ current_fold, max_to_keep=1)
+    train(model, x_train, y_train, x_validation, y_validation, loss_object, optimizer, ckpt, manager, n_epochs=EPOCHS)
 
     # TESTING
     pred = model.predict(x_test)
     print("Accuracy score on test set:", accuracy_score(np.argmax(y_test, axis=1), np.argmax(pred, axis=1)))
-    print("F-score on test set: ", f1_score(y_test, pred, average='macro'))
-    print("K-score on test set: ", cohen_kappa_score(y_test, pred))
+    print("F-score on test set: ", f1_score(np.argmax(y_test, axis=1), np.argmax(pred, axis=1), average='macro'))
+    print("K-score on test set: ", cohen_kappa_score(np.argmax(y_test, axis=1), np.argmax(pred, axis=1)))
